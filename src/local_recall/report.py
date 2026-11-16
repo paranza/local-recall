@@ -12,7 +12,7 @@ SYSTEM_LABELS = {
     "bm25_nostem": "BM25, no stemming",
     "bm25": "BM25",
     "dense": "Dense (exact)",
-    "dense_hnsw": "Dense (HNSW, ef=64)",
+    "dense_hnsw": "Dense (HNSW, ef=100)",
     "hybrid": "Hybrid (RRF)",
     "hybrid_rerank": "Hybrid + cross-encoder",
     "dense_onnx_fp32": "Dense, ONNX fp32",

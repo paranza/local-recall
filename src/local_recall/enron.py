@@ -7,8 +7,8 @@ Two public datasets are joined:
                                        address and the date the question is asked
 
 Each question is scoped to one person's mailbox, which makes this a personal
-search task: find the right email among the 7k to 23k messages that person
-sent or received. The questions were written by a language model from the
+search task: find the right email among the messages that person sent or
+received before the question's date. The questions were written by a language model from the
 source emails (see the dataset card), so they are synthetic, and each one
 comes with a realism score.
 

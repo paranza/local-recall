@@ -151,8 +151,10 @@ def run_dataset(name: str, *, device: str, with_onnx: bool) -> dict:
     sample_idx = rng.choice(len(qtexts), size=min(LATENCY_QUERIES, len(qtexts)), replace=False)
     ann = []
     exact_ms = _time_each(lambda i: exact.search(q_emb[i], 10), sample_idx)
+    # The "dense_hnsw" system keeps 100 candidates, so its ef_search is 100 (ef cannot be below k).
+    ids_a, scores_a = hnsw.search(q_emb, DEPTH, ef_search=DEPTH)
+    runs["dense_hnsw"] = _run_from_ids(ds, qids, ids_a, scores_a)
     for ef in EF_SWEEP:
-        ids_a, scores_a = hnsw.search(q_emb, DEPTH, ef_search=max(ef, DEPTH))
         ids_10, _ = hnsw.search(q_emb, 10, ef_search=ef)
         overlap = np.mean([len(set(a) & set(b)) / 10 for a, b in zip(ids_10, exact_top10)])
         ranked = {q: [ds.doc_ids[int(i)] for i in row if i >= 0] for q, row in zip(qids, ids_10)}
@@ -164,8 +166,6 @@ def run_dataset(name: str, *, device: str, with_onnx: bool) -> dict:
                 **_percentiles(_time_each(lambda i, e=ef: hnsw.search(q_emb[i], 10, ef_search=e), sample_idx)),
             }
         )
-        if ef == 64:
-            runs["dense_hnsw"] = _run_from_ids(ds, qids, ids_a, scores_a)
     latency["dense_search_exact"] = _percentiles(exact_ms)
     print("dense done", flush=True)
 

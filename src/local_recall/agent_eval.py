@@ -24,7 +24,7 @@ from collections import Counter
 import numpy as np
 import torch
 
-from .agent import DEFAULT_LLM, NOT_FOUND, LocalLLM, MailboxEnv, rag_answer, run_agent
+from .agent import DEFAULT_LLM, LocalLLM, MailboxEnv, is_abstention, rag_answer, run_agent
 from .benchmark import RESULTS
 from .enron_benchmark import load_engine
 from .stats import bootstrap_ci, paired_bootstrap_ci, paired_randomization_test
@@ -51,10 +51,6 @@ def token_f1(prediction: str, reference: str) -> float:
         return 0.0
     precision, recall = common / len(pred), common / len(ref)
     return 2 * precision * recall / (precision + recall)
-
-
-def is_abstention(answer: str) -> bool:
-    return NOT_FOUND.lower() in answer.lower().replace(" ", "_")
 
 
 def _mean_ci(values: list[float]) -> dict:
