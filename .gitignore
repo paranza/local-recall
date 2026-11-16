@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+data/
+cache/
+models/
+*.egg-info/
+dist/
+.gradio/
+bench.log
+*.log

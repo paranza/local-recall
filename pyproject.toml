@@ -1,0 +1,36 @@
+[project]
+name = "local-recall"
+version = "0.1.0"
+description = "Local, privacy-first personal search: BM25, dense, hybrid and re-ranked retrieval with an agent on top, measured end to end."
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = { text = "MIT" }
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "torch>=2.4",
+    "sentence-transformers[onnx]>=5.0",
+    "faiss-cpu>=1.8",
+    "requests>=2.31",
+    "tqdm>=4.66",
+    "huggingface_hub>=0.25",
+    "accelerate>=1.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "rank-bm25>=0.2.2", "ranx>=0.3.20"]
+demo = ["gradio>=5"]
+
+[project.scripts]
+local-recall = "local_recall.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/local_recall"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
