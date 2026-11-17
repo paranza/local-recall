@@ -1,0 +1,32 @@
+{
+  "mailbox": {
+    "bm25_rank1_dense_below5": 61,
+    "dense_rank1_bm25_below5": 20,
+    "rerank_promoted_to_rank1": 150,
+    "rerank_demoted_from_rank1": 72,
+    "rerank_missed_top10": 23,
+    "rerank_missed_top10_and_absent_from_both_first_stages": 7,
+    "date_filter_moved_to_rank1": 132
+  },
+  "agent": {
+    "episodes": 150,
+    "pushbacks": {
+      "search_again": 24,
+      "read_first": 180,
+      "sources": 41
+    },
+    "tool_calls": {
+      "search_emails": 153,
+      "read_email": 126
+    },
+    "searches_with_a_filter": 16,
+    "searches_that_fell_back_to_unfiltered": 8,
+    "source_hit_both": 64,
+    "source_hit_agent_only": 28,
+    "source_hit_single_step_only": 32,
+    "median_answer_words": {
+      "rag": 10.0,
+      "agent": 20
+    }
+  }
+}

@@ -159,6 +159,9 @@ def build() -> str:
 
 
 def main() -> None:
+    from .analysis import main as analyse
+
+    analyse()
     text = build()
     path: Path = RESULTS / "RESULTS.md"
     path.write_text(text, encoding="utf-8")

@@ -11,11 +11,11 @@ The point of the project is the measurement. Each stage is compared against the 
 1. **No single retriever wins everywhere.** Dense retrieval beats BM25 by 0.16 nDCG@10 on financial questions (FiQA), but on questions about a mailbox BM25 beats dense by 0.05 MRR@10. People ask about email using the words that are in the email.
 2. **Hybrid fusion is not free.** Reciprocal rank fusion is the best system on NFCorpus (+0.022 over dense), no different from dense on SciFact, and clearly worse than dense on FiQA (-0.048), where BM25 is weak and equal-weight fusion drags the result down.
 3. **The re-ranker helps where its training data looks like the task.** A cross-encoder trained on web search queries adds +0.029 MRR@10 on mailbox questions but shows no clear gain on scientific or medical text. It also costs about 1.4 seconds per query on the CPU for 50 candidates, against under 25 ms for everything before it.
-4. **Structured filters matter more than the ranker.** Hiding emails dated after the question is worth +0.059 MRR@10 on the mailbox benchmark, more than fusion or re-ranking. Of the 132 questions the filter moved to rank 1, 120 had a later email on top without it.
+4. **Structured filters matter more than the ranker.** Hiding emails dated after the question is worth +0.059 MRR@10 on the mailbox benchmark, more than fusion or re-ranking. It moved the right email to rank 1 for 132 questions.
 5. **Int8 quantization is close to free for quality.** The quantized embedding model is 34 MB instead of 133 MB, and the nDCG@10 change is inside the noise on both datasets tested (-0.005 and -0.003, confidence intervals include zero). Moving from PyTorch to ONNX Runtime is the larger speed win: about 3 times faster per query.
 6. **Approximate search is not needed at this scale.** HNSW reaches 0.975 recall of the exact top 10 at 0.2 ms on 57,638 documents, but exact search is already 1.7 ms. For one person's data, exact search plus a pre-filter is simpler and has no recall loss.
 
-AGENT_FINDING
+7. **With a small on-device model, the agent loop did not pay off.** Using a 1.5B-parameter model, multi-step tool use cites a correct source email about as often as retrieving once and answering (0.613 against 0.640, the difference is inside the noise), gives worse answers (token F1 0.255 against 0.454) and takes four times longer (7.6 s against 1.9 s). When the source emails are removed, it admits it cannot answer only 19% of the time, against 52% for the single step. The retriever is not the bottleneck: the right email is in the top 5 for 96% of questions. The reader is.
 
 ## How it works
 
@@ -48,7 +48,7 @@ flowchart LR
 
 ## Results
 
-All numbers below are copied from [`results/RESULTS.md`](results/RESULTS.md), which is generated from the JSON files in `results/`. Brackets are 95% bootstrap confidence intervals over queries. Latency was measured on an Intel Core i7-13620H laptop CPU, one query at a time.
+All numbers below are copied from [`results/RESULTS.md`](results/RESULTS.md) and [`results/analysis.json`](results/analysis.json), which are generated from the result files in `results/`. Brackets are 95% bootstrap confidence intervals over queries. Latency was measured on an Intel Core i7-13620H laptop CPU, one query at a time.
 
 ### Retrieval quality on three BEIR test sets (nDCG@10)
 
@@ -77,7 +77,26 @@ The intervals of neighbouring systems overlap, which is why the comparisons are 
 | Hybrid + cross-encoder | 0.787 [0.770, 0.804] | 0.963 [0.955, 0.971] | 0.981 [0.975, 0.987] | 0.921 [0.911, 0.932] |
 | Hybrid, no date filter | 0.681 [0.661, 0.701] | 0.908 [0.895, 0.921] | 0.942 [0.931, 0.952] | 0.834 [0.819, 0.848] |
 
-AGENT_TABLE
+### Agent against single-step retrieval
+
+Same local model (`Qwen/Qwen2.5-1.5B-Instruct`), same retriever (hybrid + cross-encoder, top 5), 150 questions sampled with a fixed seed. For 75 of them a second run hides the source emails, where the right behaviour is to say NOT_FOUND.
+
+| System | Cites a gold email | Answer F1 | Says NOT_FOUND, evidence present | Says NOT_FOUND, evidence removed | Model calls | Seconds |
+|---|---|---|---|---|---|---|
+| Single-step | 0.640 [0.560, 0.713] | 0.454 [0.400, 0.509] | 0.067 [0.027, 0.107] | 0.520 [0.400, 0.627] | 1.0 | 1.9 |
+| Agent (search and read tools, up to 6 steps) | 0.613 [0.533, 0.693] | 0.255 [0.212, 0.300] | 0.153 [0.100, 0.213] | 0.187 [0.107, 0.280] | 4.5 | 7.6 |
+
+Paired differences, agent minus single-step: citation -0.027 [-0.127, +0.073], p = 0.695. Answer F1 -0.199 [-0.261, -0.137], p < 0.001. NOT_FOUND with evidence removed -0.333 [-0.467, -0.200], p < 0.001.
+
+What the transcripts show:
+
+- **The model wants to answer from previews.** In 150 episodes the loop sent back 180 answers that were given before any email had been opened. Without that rule in code, most citations would rest on a two-line preview.
+- **The two systems fail on different questions.** Both cite a gold email on 64 questions, only the agent on 28, only the single step on 32. The agent recovers some questions by searching with its own keywords and loses others by opening the wrong email.
+- **Longer answers, lower F1.** The agent's answers have a median of 20 words against 10 for the single step, and it tends to summarise the email it opened instead of answering the question asked.
+- **More steps, more chances to find something that looks like an answer.** With the evidence removed, the agent keeps searching until a related email turns up and then answers from it. This is the result I would worry about most in a product.
+- **Invented filters are real.** The model added a sender or date filter in 16 of 153 searches, and in 8 of those the filter matched nothing and the fallback to an unfiltered search was used.
+
+This is one small model. The comparison says that a multi-step loop is not automatically better and has to earn its latency, not that agents do not work. Repeating it with larger models is the first item on the to-do list.
 
 ### On-device cost
 
@@ -104,7 +123,7 @@ Mailbox benchmark, looking at where the right email was ranked:
 - **BM25 right, dense far off (61 questions).** Questions with a specific name, number or rare term: "What is the phone number for Mark on the weather desk?", "When is the EIM all employee meeting and happy hour?". One vector for a whole email blurs a single detail. Exact term match does not.
 - **Dense right, BM25 far off (20 questions).** Broader questions with common words, where meaning matters more than a rare term: "What did the California governor say about meeting with power generators?", "What is the main concern Jeff has about California's regulation of utility purchases?".
 - **Re-ranker.** It moved the right email to rank 1 for 150 questions and pushed it down from rank 1 for 72. A net gain, not a free one.
-- **Still missed after everything (23 questions).** Mostly cases where neither first-stage retriever had the email in its candidates, so the re-ranker never saw it. Better first-stage recall, for example by indexing long emails in passages, is the fix. A stronger re-ranker is not.
+- **Still missed after everything (23 questions).** For 7 of them the email was outside the top 10 of both first-stage retrievers. For the other 16, at least one retriever had it in its top 10 and fusion or the re-ranker pushed it out. So most remaining errors are ranking errors, not recall errors.
 - **FiQA, where fusion hurts.** BM25 reaches 0.242 against 0.403 for dense. Reciprocal rank fusion gives both lists the same weight, so a weak list pulls good dense results down. A weight learned on held-out queries, or a rule that falls back to dense when the two lists disagree strongly, is the obvious next experiment.
 
 ## Design decisions
@@ -151,7 +170,7 @@ local-recall all                # every benchmark, then results/RESULTS.md
 |---|---|---|
 | `local-recall benchmark` | BEIR: all stages, HNSW sweep, ONNX formats, latency | about 30 min the first time (CPU-only ONNX encoding), 7 min after |
 | `local-recall mailbox-benchmark` | Personal search on the Enron mailboxes | about 10 min |
-| `local-recall agent-eval` | Agent against single-step retrieval | AGENT_TIME |
+| `local-recall agent-eval` | Agent against single-step retrieval | about 70 min with the laptop GPU |
 | `local-recall report` | Rebuilds `results/RESULTS.md` | seconds |
 
 Search a mailbox from the terminal, or open the web demo:

@@ -10,7 +10,7 @@ Brackets are 95% bootstrap confidence intervals over queries (10,000 resamples).
 | BM25, no stemming | 0.666 [0.619, 0.712] | 0.307 [0.274, 0.341] | 0.238 [0.214, 0.263] |
 | BM25 | 0.666 [0.620, 0.712] | 0.321 [0.287, 0.355] | 0.242 [0.218, 0.267] |
 | Dense (exact) | 0.713 [0.668, 0.755] | 0.344 [0.309, 0.378] | 0.403 [0.375, 0.432] |
-| Dense (HNSW, ef=64) | 0.713 [0.668, 0.755] | 0.342 [0.308, 0.376] | 0.399 [0.370, 0.427] |
+| Dense (HNSW, ef=100) | 0.713 [0.668, 0.755] | 0.342 [0.308, 0.376] | 0.399 [0.370, 0.427] |
 | Hybrid (RRF) | 0.709 [0.664, 0.752] | 0.366 [0.330, 0.401] | 0.355 [0.328, 0.382] |
 | Hybrid + cross-encoder | 0.693 [0.648, 0.737] | 0.356 [0.321, 0.391] | 0.374 [0.347, 0.401] |
 
@@ -31,7 +31,7 @@ Difference A minus B on the same queries. p-values come from a paired randomizat
 |---|---|---|---|---|---|---|
 | scifact | BM25 | BM25, no stemming | -0.000 | [-0.010, +0.010] | 1.000 | no clear difference |
 | scifact | Dense (exact) | BM25 | +0.047 | [+0.013, +0.081] | 0.078 | no clear difference |
-| scifact | Dense (HNSW, ef=64) | Dense (exact) | +0.000 | [+0.000, +0.000] | 1.000 | no clear difference |
+| scifact | Dense (HNSW, ef=100) | Dense (exact) | +0.000 | [+0.000, +0.000] | 1.000 | no clear difference |
 | scifact | Hybrid (RRF) | BM25 | +0.043 | [+0.022, +0.065] | <0.001 | better |
 | scifact | Hybrid (RRF) | Dense (exact) | -0.003 | [-0.028, +0.021] | 1.000 | no clear difference |
 | scifact | Hybrid + cross-encoder | Hybrid (RRF) | -0.016 | [-0.044, +0.012] | 1.000 | no clear difference |
@@ -40,7 +40,7 @@ Difference A minus B on the same queries. p-values come from a paired randomizat
 | scifact | Dense, ONNX int8 | Dense, ONNX fp32 | -0.005 | [-0.015, +0.003] | 1.000 | no clear difference |
 | nfcorpus | BM25 | BM25, no stemming | +0.014 | [+0.005, +0.022] | 0.012 | better |
 | nfcorpus | Dense (exact) | BM25 | +0.023 | [+0.001, +0.045] | 0.209 | no clear difference |
-| nfcorpus | Dense (HNSW, ef=64) | Dense (exact) | -0.002 | [-0.004, -0.000] | 0.494 | no clear difference |
+| nfcorpus | Dense (HNSW, ef=100) | Dense (exact) | -0.002 | [-0.004, -0.000] | 0.494 | no clear difference |
 | nfcorpus | Hybrid (RRF) | BM25 | +0.045 | [+0.030, +0.060] | <0.001 | better |
 | nfcorpus | Hybrid (RRF) | Dense (exact) | +0.022 | [+0.008, +0.037] | 0.015 | better |
 | nfcorpus | Hybrid + cross-encoder | Hybrid (RRF) | -0.010 | [-0.023, +0.004] | 0.683 | no clear difference |
@@ -49,7 +49,7 @@ Difference A minus B on the same queries. p-values come from a paired randomizat
 | nfcorpus | Dense, ONNX int8 | Dense, ONNX fp32 | -0.003 | [-0.007, +0.002] | 0.683 | no clear difference |
 | fiqa | BM25 | BM25, no stemming | +0.004 | [-0.006, +0.015] | 0.435 | no clear difference |
 | fiqa | Dense (exact) | BM25 | +0.161 | [+0.137, +0.185] | <0.001 | better |
-| fiqa | Dense (HNSW, ef=64) | Dense (exact) | -0.005 | [-0.011, -0.000] | 0.129 | no clear difference |
+| fiqa | Dense (HNSW, ef=100) | Dense (exact) | -0.005 | [-0.011, -0.000] | 0.129 | no clear difference |
 | fiqa | Hybrid (RRF) | BM25 | +0.113 | [+0.098, +0.128] | <0.001 | better |
 | fiqa | Hybrid (RRF) | Dense (exact) | -0.048 | [-0.066, -0.030] | <0.001 | worse |
 | fiqa | Hybrid + cross-encoder | Hybrid (RRF) | +0.018 | [+0.002, +0.034] | 0.081 | no clear difference |
@@ -138,6 +138,23 @@ Paired comparisons on MRR@10:
 | Hybrid + cross-encoder | Hybrid (RRF) | +0.029 | [+0.018, +0.040] | <0.001 | better |
 | Hybrid + cross-encoder | BM25 | +0.027 | [+0.016, +0.038] | <0.001 | better |
 | Hybrid (RRF) | Hybrid, no date filter | +0.059 | [+0.050, +0.067] | <0.001 | better |
+
+## 9. Agent against single-step retrieval (local language model)
+
+Model: `Qwen/Qwen2.5-1.5B-Instruct`. 150 answerable questions, 75 with the evidence removed.
+
+| System | Cites a gold email | Answer F1 | Says NOT_FOUND (answerable) | Says NOT_FOUND (evidence removed) | Steps | Seconds |
+|---|---|---|---|---|---|---|
+| Single-step | 0.640 [0.560, 0.713] | 0.454 [0.400, 0.509] | 0.067 [0.027, 0.107] | 0.520 [0.400, 0.627] | 1.0 | 1.9 |
+| Agent (tools, up to 6 steps) | 0.613 [0.533, 0.693] | 0.255 [0.212, 0.300] | 0.153 [0.100, 0.213] | 0.187 [0.107, 0.280] | 4.5 | 7.6 |
+
+Agent minus single-step, paired:
+
+| Setting | Metric | Difference | 95% CI | p |
+|---|---|---|---|---|
+| answerable | source_hit | -0.027 | [-0.127, +0.073] | 0.695 |
+| answerable | answer_f1 | -0.199 | [-0.261, -0.137] | <0.001 |
+| evidence_removed | abstained | -0.333 | [-0.467, -0.200] | <0.001 |
 
 ## Environment
 

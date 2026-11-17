@@ -93,18 +93,43 @@ Static quantization with calibration data, a smaller or distilled encoder, Core 
 A hard filter that is wrong removes the right answer with no way back, so precision matters more than coverage. Rules are transparent, testable and never invent a filter. The parser handles "emails from greg whalley in June 2000" and deliberately ignores "Avi from Mars Corp." (`query_filters.py`, `tests/test_query_filters.py`).
 
 **How much is a filter worth?**
-The date filter alone is +0.059 MRR@10 on the mailbox benchmark, more than fusion or re-ranking. Without it, 120 of the 132 affected questions had a later email at rank 1.
+The date filter alone is +0.059 MRR@10 on the mailbox benchmark, more than fusion or re-ranking. It moved the right email to rank 1 for 132 questions.
 
 **Why filter before ranking?**
 It is exact and the candidate set is small. Post-filtering an approximate top-k can leave fewer than k results.
 
 ## Agent
 
-AGENT_NOTES
+**How does the agent work?**
+A local chat model (Qwen2.5 1.5B) gets two tools described by JSON schemas: `search_emails(query, sender?, date_from?, date_to?)` and `read_email(email_id)`. The loop in `agent.py` sends the conversation to the model. If the reply contains a tool call, the tool runs and its output is appended. The first reply without a tool call is the final answer, which must end with a "Sources:" line. At most six model calls.
+
+**Why is the final answer plain text and not a tool?**
+My first version had a `final_answer` tool. The model kept answering in prose after seeing tool results, because that is how chat models are trained to use tools. Working with that habit instead of against it removed most wasted steps.
+
+**Which rules are enforced in code, and why not in the prompt?**
+An email can only be cited after `read_email` showed its full text. An answer before any email was opened is sent back. Giving up after one search is sent back once. An identical repeated call is refused. A filter that matches nothing falls back to an unfiltered search. A small model does not follow instructions reliably: in 150 episodes the loop sent back 180 answers given from previews alone.
+
+**What was the result?**
+On 150 questions, the agent cites a gold source email 61.3% of the time and single-step retrieval 64.0%, a difference well inside the noise (p = 0.695). The agent's answers score lower (token F1 0.255 against 0.454), it takes 7.6 s against 1.9 s, and when the source emails are hidden it says NOT_FOUND 18.7% of the time against 52.0%.
+
+**Why did the agent not win?**
+The retriever already puts the right email in the top 5 for 96% of questions, so there is little for extra searches to recover. The single step shows the model five full emails at once. The agent has to choose which one to open from a preview, and a 1.5B model chooses and summarises poorly. More steps also mean more chances to find an email that looks relevant, which is why it abstains less when the real evidence is gone.
+
+**So are agents a bad idea?**
+No. This says a multi-step loop has to earn its latency, and that for single-fact lookups with a strong retriever and a small model it does not. I would expect the loop to pay off for questions that need several emails, for weaker first-stage retrieval, and for larger models. Those are the next experiments.
+
+**How do you score the agent without a human?**
+Two automatic scores. Source hit: did it cite an email that the benchmark marks as a source. Token F1 against the reference answer, the SQuAD metric. F1 is rough: a correct answer in other words scores low, and the agent's longer answers (median 20 words against 10) are penalised. That is why I treat the citation rate as the main number. I did not use a language model as a judge, because the judge's errors would be hard to separate from the system's.
+
+**How do you test abstention?**
+By hiding the gold emails for 75 questions and counting how often each system still answers. One caveat: the mailbox may hold other emails with the same fact (replies that quote the original), so some of those answers are correct. The comparison between the two systems is still fair, since both see the same mailbox.
+
+**How is the loop tested?**
+With a scripted fake model in `tests/test_agent.py`, so the tests need no GPU: tool parsing, each push-back rule, the step limit, hidden evidence and the filter fallback.
 
 ## What I would do with more time
 
-1. Index long emails as passages and aggregate scores per email, to fix the cases neither retriever finds.
+1. Index long emails as passages and aggregate scores per email, so a single detail is not blurred by one vector per email.
 2. Learn the fusion weight on a held-out split, and test a fallback to dense when the lists disagree.
 3. Build a small set of real, human-written mailbox questions, since the synthetic ones favour BM25.
 4. Evaluate the filter parser on labelled queries.
