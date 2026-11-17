@@ -21,7 +21,8 @@ def main() -> None:
     agent.add_argument("--tag", default=None, help="suffix for the output files")
 
     sub.add_parser("report", help="rebuild results/RESULTS.md from the result files")
-    sub.add_parser("all", help="benchmark, mailbox-benchmark, agent-eval and report, in that order")
+    sub.add_parser("plots", help="draw the figures in results/figures from the result files")
+    sub.add_parser("all", help="benchmark, mailbox-benchmark, agent-eval, report and plots, in that order")
 
     search = sub.add_parser("search", help="search one Enron mailbox from the terminal")
     search.add_argument("query")
@@ -45,6 +46,10 @@ def main() -> None:
         run(getattr(args, "model", None) or DEFAULT_LLM, getattr(args, "four_bit", False), getattr(args, "tag", None))
     if args.command in ("report", "all"):
         from .report import main as run
+
+        run()
+    if args.command in ("plots", "all"):
+        from .plots import main as run
 
         run()
     if args.command == "search":

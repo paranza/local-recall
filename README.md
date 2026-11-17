@@ -48,7 +48,12 @@ flowchart LR
 
 ## Results
 
-All numbers below are copied from [`results/RESULTS.md`](results/RESULTS.md) and [`results/analysis.json`](results/analysis.json), which are generated from the result files in `results/`. Brackets are 95% bootstrap confidence intervals over queries. Latency was measured on an Intel Core i7-13620H laptop CPU, one query at a time.
+All numbers below are copied from [`results/RESULTS.md`](results/RESULTS.md) and [`results/analysis.json`](results/analysis.json), which are generated from the result files in `results/`. Brackets are 95% bootstrap confidence intervals over queries. Latency was measured on an Intel Core i7-13620H laptop CPU, one query at a time. The figures are drawn from the same files by `local-recall plots`.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="results/figures/quality_by_stage_dark.png">
+  <img alt="Dot and interval chart of retrieval quality for BM25, dense, hybrid and hybrid plus cross-encoder on SciFact, NFCorpus, FiQA and the Enron mailboxes. A different system has the highest mean on each benchmark." src="results/figures/quality_by_stage_light.png">
+</picture>
 
 ### Retrieval quality on three BEIR test sets (nDCG@10)
 
@@ -80,6 +85,11 @@ The intervals of neighbouring systems overlap, which is why the comparisons are 
 ### Agent against single-step retrieval
 
 Same local model (`Qwen/Qwen2.5-1.5B-Instruct`), same retriever (hybrid + cross-encoder, top 5), 150 questions sampled with a fixed seed. For 75 of them a second run hides the source emails, where the right behaviour is to say NOT_FOUND.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="results/figures/agent_vs_single_step_dark.png">
+  <img alt="Dot and interval chart comparing the agent with single-step retrieval on source citation, answer F1, saying NOT_FOUND when the evidence is removed, and seconds per question." src="results/figures/agent_vs_single_step_light.png">
+</picture>
 
 | System | Cites a gold email | Answer F1 | Says NOT_FOUND, evidence present | Says NOT_FOUND, evidence removed | Model calls | Seconds |
 |---|---|---|---|---|---|---|
@@ -115,6 +125,16 @@ This is one small model. The comparison says that a multi-step loop is not autom
 | Cross-encoder, 50 candidates | 1,279 ms | 1,307 ms |
 
 Index size for FiQA: 30.9 MB of BM25 postings, 88.5 MB of embeddings, 104.2 MB for the HNSW graph.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="results/figures/latency_by_stage_dark.png">
+  <img alt="Time per query for each step on FiQA, on a log scale. The cross-encoder takes about 1,279 ms and every other step takes under 20 ms." src="results/figures/latency_by_stage_light.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="results/figures/hnsw_tradeoff_dark.png">
+  <img alt="Recall of the exact top 10 against search latency for HNSW settings from ef 8 to 256 and for exact search, on SciFact, NFCorpus and FiQA." src="results/figures/hnsw_tradeoff_light.png">
+</picture>
 
 ## Error analysis
 
@@ -161,10 +181,10 @@ python -m venv .venv
 pip install -e ".[dev,demo]"
 
 pytest                          # 50+ tests, a few minutes on the first run
-local-recall all                # every benchmark, then results/RESULTS.md
+local-recall all                # every benchmark, then results/RESULTS.md and the figures
 ```
 
-`local-recall all` downloads the datasets and models (about 1.5 GB), then runs four steps that can also be run one at a time:
+`local-recall all` downloads the datasets and models (about 1.5 GB), then runs five steps that can also be run one at a time:
 
 | Command | What it does | Time on the laptop above |
 |---|---|---|
@@ -172,6 +192,7 @@ local-recall all                # every benchmark, then results/RESULTS.md
 | `local-recall mailbox-benchmark` | Personal search on the Enron mailboxes | about 10 min |
 | `local-recall agent-eval` | Agent against single-step retrieval | about 70 min with the laptop GPU |
 | `local-recall report` | Rebuilds `results/RESULTS.md` | seconds |
+| `local-recall plots` | Redraws the figures in `results/figures/` (light and dark) | seconds |
 
 Search a mailbox from the terminal, or open the web demo:
 
