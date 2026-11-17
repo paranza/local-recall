@@ -1,4 +1,4 @@
-# Interview notes
+# Design notes
 
 Questions I would expect about this project, with short answers and where to look in the code. Every number comes from `results/RESULTS.md`.
 

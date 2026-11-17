@@ -220,6 +220,6 @@ The run files in `results/runs/` hold document ids and scores only. `results/age
 
 ## Notes
 
-Built with AI-assisted development (Claude Code). The design, the experiments and the conclusions are documented in [`docs/interview_notes.md`](docs/interview_notes.md), which answers the questions I would expect about this project.
+Built with AI-assisted development (Claude Code). The design, the experiments and the conclusions are documented in [`docs/design_notes.md`](docs/design_notes.md), which answers the questions I would expect about this project.
 
 Licence: MIT.
